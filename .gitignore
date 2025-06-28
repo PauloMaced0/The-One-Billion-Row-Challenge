@@ -1,3 +1,9 @@
+# Weather Station Sample files
+*.txt
+
+# Cache folders
+.cache
+
 # Build paths
 build/
 
