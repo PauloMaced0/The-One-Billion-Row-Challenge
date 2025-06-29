@@ -1,4 +1,4 @@
-# CLE - Practical Assignment Template
+# The One Billion Row Challenge 
 
 ## Instructions to Run the Programs
 
@@ -23,7 +23,15 @@ After running the `make` command, the executables will be created inside the `bu
 ```sh
 ./build/cle-ws-samples <number_samples>
 ```
+
+## Approach 
+
+This program uses a different strategy by employing a **thread pool**, splitting the file into multiple chunks, and processing each chunk as a separate task in parallel.
+
 ## Performance Analysis
 
-ToDo...
+- Without Caching (cold cache):
+    - The multithreaded version achieves a speedup of **46 x**, reducing runtime from `305 seconds` (single-threaded) to `6.6 seconds`. 
 
+- With Caching (warm cache):
+    - It is significantly faster thanks to the use of mmap, which allows the operating system to keep many pages already cached in memory, achieving a **112 x** speedup, executing in just `2.7 seconds`.
