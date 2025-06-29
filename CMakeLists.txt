@@ -22,7 +22,7 @@ add_executable(cle-ws-threads
 )
 
 target_compile_features(cle-ws-threads PRIVATE cxx_std_20)
-target_compile_options(cle-ws-threads PRIVATE -Wall -Wextra -std=c++0x -pthread -O2)
+target_compile_options(cle-ws-threads PRIVATE -Wall -Wextra -std=c++0x -pthread -O3)
 target_include_directories(cle-ws-threads PRIVATE include src)
 
 add_executable(cle-ws-samples 
