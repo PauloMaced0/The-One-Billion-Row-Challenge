@@ -35,3 +35,7 @@ This program uses a different strategy by employing a **thread pool**, splitting
 
 - With Caching (warm cache):
     - It is significantly faster thanks to the use of mmap, which allows the operating system to keep many pages already cached in memory, achieving a **112 x** speedup, executing in just `2.7 seconds`.
+
+> [!NOTE]
+> These tests were performed with a file of **500 million rows**, not **1 billion**, because there wasn’t enough physical memory to fully map and exploit parallelism at that scale.
+With the smaller file, the entire dataset fits in memory, allowing all threads to stay busy and better demonstrate parallel performance.
