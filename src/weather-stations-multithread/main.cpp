@@ -1,4 +1,3 @@
-#include <chrono>
 #include <cstddef>
 #include <cstdio>
 #include <iomanip>
@@ -70,74 +69,45 @@ size_t adjustToNextNewline(const char* data, size_t end, size_t fileSize) {
 void FileProcessTask(Task args) 
 {
     const char *ptr = args.data + args.start;
-    // const char *end = args.data + args.end;
-
-    uint stringStart = 0;
+    const char *end = args.data + args.end;
 
     char station[100] = {0};
     char temp[5] = {0};
     int temperature;
 
-    // const char *sep;
-    // const char *newline;
+    const char *sep;
+    const char *newline;
 
-    auto startclk = chrono::high_resolution_clock::now();
+    while (ptr < end) {
+        // Find ';'
+        sep = ptr;
+        while (sep < end && *sep != ';') ++sep;
 
-    // while (ptr < end) {
-    //     // Find ';'
-    //     sep = ptr;
-    //     while (sep < end && *sep != ';') ++sep;
-    // 
-    //     memcpy(station, ptr, sep - ptr);
-    //     station[sep - ptr] = '\0';
-    // 
-    //     // Advance past ';'
-    //     if (sep < end) ++sep;
-    // 
-    //     // Find '\n'
-    //     newline = sep;
-    //     while (newline < end && *newline != '\n') ++newline;
-    // 
-    //     memcpy(temp, sep, newline - sep);
-    //     temp[newline - sep] = '\0';
-    // 
-    //     temperature = parse_float(temp);
-    // 
-    //     auto &entry = (*args.map)[station];
-    //     entry.cnt += 1;
-    //     entry.sum += temperature;
-    //     entry.max = max(entry.max, temperature);
-    //     entry.min = min(entry.min, temperature);
-    // 
-    //     // Move to next line
-    //     if (newline < end) ++newline;
-    //     ptr = newline;
-    // }
-    
-    for (size_t i = 0; i < args.end - args.start; i++) {
-        if (ptr[i] == ';') {
-            memcpy(station, ptr + stringStart, i - stringStart);
-            station[i - stringStart] = '\0';
-            stringStart = i + 1;
-        } else if (ptr[i] == '\n') {
-            memcpy(temp, ptr + stringStart, i - stringStart);
-            temp[i - stringStart] = '\0';
+        memcpy(station, ptr, sep - ptr);
+        station[sep - ptr] = '\0';
 
-            temperature = parse_float(temp);
+        // Advance past ';'
+        if (sep < end) ++sep;
 
-            WSData& entry = (*args.map)[station];
-            entry.cnt += 1;
-            entry.sum += temperature;
-            entry.max = max(entry.max, temperature);
-            entry.min = min(entry.min, temperature);
+        // Find '\n'
+        newline = sep;
+        while (newline < end && *newline != '\n') ++newline;
 
-            stringStart = i + 1;
-        }
+        memcpy(temp, sep, newline - sep);
+        temp[newline - sep] = '\0';
+
+        temperature = parse_float(temp);
+
+        auto &entry = (*args.map)[station];
+        entry.cnt += 1;
+        entry.sum += temperature;
+        entry.max = max(entry.max, temperature);
+        entry.min = min(entry.min, temperature);
+
+        // Move to next line
+        if (newline < end) ++newline;
+        ptr = newline;
     }
-
-    auto stop = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<chrono::milliseconds>(stop - startclk);
-    cout << "Task creation and execution takes: "<< duration.count() << " ms"<< endl;
 
     return;
 }
