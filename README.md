@@ -31,10 +31,10 @@ This program uses a different strategy by employing a **thread pool**, splitting
 ## Performance Analysis
 
 - Without Caching (cold cache):
-    - The multithreaded version achieves a speedup of **46 x**, reducing runtime from `305 seconds` (single-threaded) to `6.6 seconds`. 
+    - The multithreaded version achieves a **46x speedup**, reducing runtime from `305.9 seconds` (single-threaded) to `6.6 seconds`. 
 
 - With Caching (warm cache):
-    - It is significantly faster thanks to the use of mmap, which allows the operating system to keep many pages already cached in memory, achieving a **112 x** speedup, executing in just `2.7 seconds`.
+    - It is significantly faster thanks to the use of mmap, which allows the operating system to keep many pages already cached in memory, achieving a **113x speedup**, executing in just `2.7 seconds`.
 
 > [!NOTE]
 > These tests were performed with a file of **500 million rows**, not **1 billion**, because there wasn’t enough physical memory to fully map and exploit parallelism at that scale.
