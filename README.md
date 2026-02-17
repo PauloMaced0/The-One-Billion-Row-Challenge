@@ -1,5 +1,4 @@
 # The One Billion Row Challenge 
-
 The goal of this challenge is to write a program that reads temperature measurements from a text file and computes the **minimum**, **mean**, and **maximum** temperature for each weather station.
 
 There is just one caveat:
@@ -123,3 +122,15 @@ This additional gain is largely due to:
 - Reduced disk I/O overhead
 
 Because the data is already in RAM, the program becomes CPU-bound rather than I/O-bound.
+
+### Benchmark Hardware
+
+Benchmarks were executed on:
+
+- **CPU**: AMD EPYC 8434P (8 cores, 8 threads)
+
+- **Architecture**: x86_64
+
+- **L3 Cache**: 128 MB
+
+- **Virtualized Environment**: KVM (AMD-V)
