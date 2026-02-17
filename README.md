@@ -81,7 +81,7 @@ This approach:
 
 ### Thread Pool Architecture
 
-[Thread Pool](./thread_pool.png)
+![Thread Pool](./thread_pool.png)
 
 ## Performance Analysis
 
