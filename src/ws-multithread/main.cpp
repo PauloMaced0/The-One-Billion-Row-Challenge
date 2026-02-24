@@ -1,36 +1,36 @@
+#include <chrono>
 #include <cstddef>
 #include <cstdio>
 #include <iomanip>
+#include <ios>
 #include <stdio.h>
 #include <cstdlib>
 #include <iosfwd>
 #include <iostream>
 #include <iostream>
-#include <memory>
-#include <string>
 #include <sys/mman.h>
 #include <sys/fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <thread>
 #include <unistd.h>
-#include <unordered_map>
 #include <cstring> 
+#include <vector>
 #include "thread_pool.h"
-
-#define TEMP_MAX 1000
-#define TEMP_MIN -1000
+#include "hash_table.h"
 
 using namespace std;
 
-struct WSData {
-    int sum = 0;
-    int cnt = 0;
-    int min = TEMP_MAX;
-    int max = TEMP_MIN;
+#define HASH_TABLE_SIZE 4096
+
+struct Task {
+    const char* data;
+    int tId;
+    size_t start;
+    size_t end;
+    HashTableWS* map;
 };
 
-int parse_float(const char* s) {
+const char* parse_float(int* temp, const char* s) {
     // parse sign
     int mod = 1;
     if (*s == '-') {
@@ -39,19 +39,13 @@ int parse_float(const char* s) {
     }
 
     if (s[1] == '.') {
-        return (s[0] * 10 + s[2] - (11 * '0')) * mod;
+        *temp = (s[0] * 10 + s[2] - (11 * '0')) * mod; 
+        return s + 4;
     }
 
-    return (s[0] * 100 + s[1] * 10 + s[3] - (111 * '0')) * mod;
+    *temp = (s[0] * 100 + s[1] * 10 + s[3] - (111 * '0')) * mod; 
+    return s + 5;
 }
-
-struct Task {
-    std::shared_ptr<std::unordered_map<std::string, WSData>> map;
-    const char* data;
-    size_t start;
-    size_t end;
-    int tId;
-};
 
 size_t adjustToNextNewline(const char* data, size_t end, size_t fileSize) {
     size_t i = end;
@@ -70,65 +64,55 @@ void FileProcessTask(Task args)
 {
     const char *ptr = args.data + args.start;
     const char *end = args.data + args.end;
-
-    char station[100] = {0};
-    char temp[5] = {0};
-    int temperature;
-
     const char *sep;
-    const char *newline;
+
+    HashTableWS* map = args.map;
+
+    hash_table_node* node = NULL;
+    int temperature;
+    int len;
 
     while (ptr < end) {
         // Find ';'
         sep = ptr;
-        while (sep < end && *sep != ';') ++sep;
+        while (*sep != ';') ++sep;
 
-        memcpy(station, ptr, sep - ptr);
-        station[sep - ptr] = '\0';
+        len = sep - ptr;
 
-        // Advance past ';'
-        if (sep < end) ++sep;
+        sep = parse_float(&temperature, ++sep);
 
-        // Find '\n'
-        newline = sep;
-        while (newline < end && *newline != '\n') ++newline;
+        node = map->find(ptr, len);
+        if (node == NULL) {
+            map->insert(ptr, temperature, len);
+        } else {
+            map->update(node, temperature);
+        }
 
-        memcpy(temp, sep, newline - sep);
-        temp[newline - sep] = '\0';
-
-        temperature = parse_float(temp);
-
-        auto &entry = (*args.map)[station];
-        entry.cnt += 1;
-        entry.sum += temperature;
-        entry.max = max(entry.max, temperature);
-        entry.min = min(entry.min, temperature);
-
-        // Move to next line
-        if (newline < end) ++newline;
-        ptr = newline;
+        ptr = sep;
     }
 
     return;
 }
 
-void MergeMapsTask(unordered_map<string, WSData>& finalStats, const unordered_map<string, WSData>& partialMap) {
-    for (const auto& item : partialMap) {
-        WSData& entry = finalStats[item.first];
-        entry.cnt += item.second.cnt;
-        entry.sum += item.second.sum;
-        entry.max = max(entry.max, item.second.max);
-        entry.min = min(entry.min, item.second.min);
+void MergeMapsTask(HashTableWS& finalStats, HashTableWS& partialMap) {
+    for (auto& item : partialMap) {
+        hash_table_node* entry = finalStats.find(item.data.station, (int)strlen(item.data.station));
+        if (entry != NULL) {
+            entry->data.cnt += item.data.cnt;
+            entry->data.sum += item.data.sum;
+            entry->data.max = max(entry->data.max, item.data.max);
+            entry->data.min = min(entry->data.min, item.data.min);
+        }
     }
 }
 
-void MergeSortTask(std::vector<std::pair<string, WSData>>& arr, int left, int mid, int right) {
-    vector<pair<string, WSData>> temp(right - left + 1);
+void MergeSortTask(vector<ws_data>& arr, int left, int mid, int right) {
+    vector<ws_data> temp(right - left + 1);
     int i = left, j = mid + 1, k = 0;
 
     while (i <= mid && j <= right) {
         // Compare based on a max temperature
-        if (arr[i].second.max < arr[j].second.max)  
+        if (strcmp(arr[i].station, arr[j].station) < 0)  
             temp[k++] = arr[i++];
         else
             temp[k++] = arr[j++];
@@ -145,8 +129,7 @@ void MergeSortTask(std::vector<std::pair<string, WSData>>& arr, int left, int mi
 
 int main(int argc, char* argv[])
 {
-    int numThreads = thread::hardware_concurrency();
-    if (numThreads == 0) numThreads = 2; // Fallback if the function returns 0
+    int numThreads = 8;
 
     // Use default file ...
     const char* file = "measurements.txt";
@@ -159,6 +142,7 @@ int main(int argc, char* argv[])
         numThreads = atoi(argv[2]);
         if (numThreads <= 0) {
             cerr << "Invalid number of threads.\n";
+            return 1;
         }
     }
 
@@ -170,8 +154,6 @@ int main(int argc, char* argv[])
         return 1;
     }
     
-    vector<std::shared_ptr<std::unordered_map<string, WSData>>> stats;
-
     struct stat sb;
     if (fstat(fd, &sb) == -1) {
         std::cerr << "fstat failed." << std::endl;
@@ -186,22 +168,23 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    int splitFactor = 10 * numThreads;
+    int splitFactor = 200 * numThreads;
     size_t chunkSize = fileSize / splitFactor;
 
     size_t start = 0;
     size_t end = chunkSize;
 
+    HashTableWS** tables = new HashTableWS*[splitFactor];
+    
     // Task creation and execution is the bottleneck
     for (int i = 0; i < splitFactor; i++) {
         // Open file to adjust the end position to the next newline
         end = adjustToNextNewline(mapped, end, fileSize);
 
-        auto map = std::make_shared<std::unordered_map<string, WSData>>();
-        stats.push_back(map);
+        tables[i] = new HashTableWS(HASH_TABLE_SIZE);
 
         // Launch task
-        Task task {map, mapped, start, end, i};
+        Task task {mapped, i, start, end, tables[i]};
         thread_pool.enqueue([task]() { FileProcessTask(task); });
 
         start = end;  // Next task starts from this position
@@ -210,20 +193,23 @@ int main(int argc, char* argv[])
 
     thread_pool.wait();
 
-    size_t n = stats.size();
-
-    for (size_t k = n; k > 1; k = k / 2 + (k % 2)) {
+    for (size_t k = splitFactor; k > 1; k = k / 2 + (k % 2)) {
         for (size_t i = 0; i < k / 2; i++) {
-            thread_pool.enqueue([&stats, i, k]() {
-                MergeMapsTask(*stats[i], *stats[i + k/2 + (k % 2)]);
+            thread_pool.enqueue([&tables, i, k]() {
+                MergeMapsTask(*tables[i], *tables[i + k/2 + (k % 2)]);
             });
         }
         thread_pool.wait();
     }
 
-    std::vector<std::pair<std::string, WSData>> statsVector(stats[0]->begin(), stats[0]->end());
+    vector<ws_data> statsVector;
 
-    n = statsVector.size();
+    for (auto& item: *tables[0]) {
+        statsVector.push_back(item.data);
+    }
+    
+    size_t n = statsVector.size();
+
     int mid, right;
 
     for (size_t size = 1; size < n; size *= 2) {
@@ -238,14 +224,16 @@ int main(int argc, char* argv[])
         } 
         thread_pool.wait();
     }
-    
+
     for(const auto &item : statsVector) {
-        cout << item.first 
-            << ": avg=" << fixed << setprecision(1) << (float)item.second.sum/ (10 * item.second.cnt)
-            << " min=" << fixed << setprecision(1) << (float)item.second.min / 10
-            << " max:" << fixed << setprecision(1) << (float)item.second.max / 10 
+        cout << item.station
+            << ": avg=" << fixed << setprecision(1) << (float)item.sum/ (10 * item.cnt)
+            << " min=" << fixed << setprecision(1) << (float)item.min / 10
+            << " max:" << fixed << setprecision(1) << (float)item.max / 10 
             << "\n";
     }
+
+    delete [] tables;
 
     munmap(mapped, fileSize);
     close(fd);

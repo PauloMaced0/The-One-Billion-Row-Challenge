@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
 
     vector<pair<string, WSData>> sortedStats(stats.begin(), stats.end());
 
-    // Sort by max temperature (descending order)
+    // Sort alphabetically
     sort(sortedStats.begin(), sortedStats.end(), [](const auto& a, const auto& b) {
         return a.first < b.first;
     });
