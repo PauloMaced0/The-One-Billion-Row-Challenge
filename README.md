@@ -15,10 +15,10 @@ After running the `make` command, the executables will be created inside the `bu
 
 `cle-ws-samples`
 
-Generates a sample dataset.
+Generates a sample dataset (1B).
 
 ```sh
-./build/cle-ws-samples <number_samples>
+./build/cle-ws-samples 1000000000
 ```
 
 **Arguments**:
@@ -77,8 +77,6 @@ This approach:
 
 - Reduces synchronization overhead (mostly computing, rarely blocking)
 
-- Scales with the number of available cores
-
 ### Thread Pool Architecture
 
 ![Thread Pool](./thread_pool.png)
@@ -93,25 +91,13 @@ In the single-threaded scenario, the program takes **548.9 seconds**.
 
 Performance improves significantly when using the thread pool.
 
-#### Cold Cache (No OS Caching)
-
-When the file is not cached in memory (first run):
-
-- Runtime: **22.6 seconds**
-
-- Speedup: **~24× faster**
-
-This improvement comes purely from parallel processing, multiple threads working on different chunks simultaneously.
-
----
-
 #### Warm Cache (With OS Page Cache)
 
 When the file is already cached in memory (subsequent runs):
 
-- Runtime: **7.8 seconds**
+- Runtime: **6.0 seconds**
 
-- Speedup: **~70× faster**
+- Speedup: **~91× faster**
 
 This additional gain is largely due to:
 
@@ -120,6 +106,8 @@ This additional gain is largely due to:
 - The operating system keeping file pages in memory (page cache)
 
 - Reduced disk I/O overhead
+
+- Almost O(1) search time with hash table
 
 Because the data is already in RAM, the program becomes CPU-bound rather than I/O-bound.
 
