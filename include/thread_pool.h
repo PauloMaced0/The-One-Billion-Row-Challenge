@@ -1,6 +1,3 @@
-#ifndef THREAD_POOL_H
-#define THREAD_POOL_H
-
 #include <condition_variable>
 #include <cstddef>
 #include <functional>
@@ -9,6 +6,8 @@
 #include <stdio.h>
 #include <thread>
 #include <vector>
+
+#ifndef THREAD_POOL_H
 
 class ThreadPool {
 public:
@@ -42,3 +41,4 @@ private:
 };
 
 #endif // !THREAD_POOL_H
+#define THREAD_POOL_H
